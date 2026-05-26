@@ -14,3 +14,6 @@ COPY . .
 RUN python manage.py collectstatic --noinput || true
 
 EXPOSE 8000
+
+# Mana shu qator yo'q edi — qo'shing:
+CMD python manage.py migrate && gunicorn farzad.wsgi:application --bind 0.0.0.0:${PORT:-8000}
