@@ -13,4 +13,4 @@ RUN python manage.py collectstatic --noinput || true
 
 EXPOSE 8080
 
-CMD python manage.py migrate && gunicorn farzad.wsgi:application --bind 0.0.0.0:8080 --workers 2
+CMD ["sh", "-c", "python manage.py migrate && gunicorn farzad.wsgi:application --bind 0.0.0.0:8080 --workers 2"]
