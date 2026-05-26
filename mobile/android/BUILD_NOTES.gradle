@@ -1,0 +1,39 @@
+// android/app/build.gradle  (key parts to configure for release APK)
+
+android {
+    compileSdkVersion 34
+    defaultConfig {
+        applicationId "uz.farzad.nazorat"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(MYAPP_UPLOAD_STORE_FILE)
+            storePassword MYAPP_UPLOAD_STORE_PASSWORD
+            keyAlias MYAPP_UPLOAD_KEY_ALIAS
+            keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+// AndroidManifest.xml permissions needed:
+// <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+// <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+// <uses-permission android:name="android.permission.CAMERA" />
+// <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+// <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+// <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+// <uses-permission android:name="android.permission.INTERNET" />
+// <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
