@@ -9,7 +9,18 @@ from .models import User, OTPCode
 from .sms import sms_service, generate_otp
 
 
-# ── Serializers ──────────────────────────────────────────────
+def normalize_phone(phone):
+    """Har qanday formatdagi telefon raqamni +998XXXXXXXXX formatga o'tkazish"""
+    digits = ''.join(filter(str.isdigit, phone))
+    if len(digits) == 9:
+        return '+998' + digits
+    elif len(digits) == 12 and digits.startswith('998'):
+        return '+' + digits
+    elif len(digits) == 13 and digits.startswith('9989'):
+        return '+' + digits[1:]
+    return '+' + digits
+
+
 class SendOTPSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20)
 
@@ -35,16 +46,13 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['barcode']
 
 
-# ── Views ─────────────────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def send_otp(request):
-    """Send OTP SMS to phone number"""
     ser = SendOTPSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
-    phone = ser.validated_data['phone']
+    phone = normalize_phone(ser.validated_data['phone'])
 
-    # Rate limit: 1 OTP per minute
     recent = OTPCode.objects.filter(
         phone=phone,
         created_at__gte=timezone.now() - timedelta(minutes=1),
@@ -62,7 +70,8 @@ def send_otp(request):
         return Response({
             'success': True,
             'demo': True,
-            'demo_code': code,  # Only shown in demo mode
+            'demo_code': code,
+            'otp': code,
             'message': f"Demo rejim: SMS yuborildi ({code})"
         })
     if result.get('success'):
@@ -73,10 +82,9 @@ def send_otp(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_otp(request):
-    """Verify OTP and login/register"""
     ser = VerifyOTPSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
-    phone = ser.validated_data['phone']
+    phone = normalize_phone(ser.validated_data['phone'])
     code = ser.validated_data['code']
 
     otp = OTPCode.objects.filter(
@@ -87,7 +95,7 @@ def verify_otp(request):
     ).first()
 
     if not otp:
-        return Response({'error': 'Noto\'g\'ri yoki muddati o\'tgan kod'}, status=400)
+        return Response({'error': "Noto'g'ri yoki muddati o'tgan kod"}, status=400)
 
     otp.is_used = True
     otp.save()
@@ -106,7 +114,6 @@ def verify_otp(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def set_pin(request):
-    """Set 4-digit app PIN"""
     ser = SetPINSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
     request.user.app_pin = ser.validated_data['pin']
@@ -117,11 +124,10 @@ def set_pin(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def verify_pin(request):
-    """Verify PIN before uninstall protection"""
     pin = request.data.get('pin')
     if request.user.app_pin == pin:
         return Response({'success': True})
-    return Response({'error': 'Noto\'g\'ri PIN'}, status=400)
+    return Response({'error': "Noto'g'ri PIN"}, status=400)
 
 
 @api_view(['GET'])
