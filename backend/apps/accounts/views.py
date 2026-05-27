@@ -7,18 +7,18 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import User, OTPCode
 from .sms import sms_service, generate_otp
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_phone(phone):
-    """Har qanday formatdagi telefon raqamni +998XXXXXXXXX formatga o'tkazish"""
     digits = ''.join(filter(str.isdigit, phone))
     if len(digits) == 9:
         return '+998' + digits
     elif len(digits) == 12 and digits.startswith('998'):
         return '+' + digits
-    elif len(digits) == 13 and digits.startswith('9989'):
-        return '+' + digits[1:]
-    return '+' + digits
+    return '+998' + digits
 
 
 class SendOTPSerializer(serializers.Serializer):
@@ -51,7 +51,10 @@ class UserSerializer(serializers.ModelSerializer):
 def send_otp(request):
     ser = SendOTPSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
-    phone = normalize_phone(ser.validated_data['phone'])
+    raw_phone = ser.validated_data['phone']
+    phone = normalize_phone(raw_phone)
+    
+    logger.warning(f"SEND_OTP: raw={raw_phone} normalized={phone}")
 
     recent = OTPCode.objects.filter(
         phone=phone,
@@ -84,8 +87,14 @@ def send_otp(request):
 def verify_otp(request):
     ser = VerifyOTPSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
-    phone = normalize_phone(ser.validated_data['phone'])
+    raw_phone = ser.validated_data['phone']
+    phone = normalize_phone(raw_phone)
     code = ser.validated_data['code']
+
+    logger.warning(f"VERIFY_OTP: raw={raw_phone} normalized={phone} code={code}")
+    
+    all_otps = list(OTPCode.objects.filter(phone=phone, is_used=False).values('phone', 'code', 'created_at'))
+    logger.warning(f"DB_OTPS for {phone}: {all_otps}")
 
     otp = OTPCode.objects.filter(
         phone=phone,
